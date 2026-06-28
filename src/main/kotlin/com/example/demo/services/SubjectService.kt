@@ -75,7 +75,6 @@ class SubjectService(
         return subject.toResponse()
     }
 
-
     fun updateSubject(
         id: Long,
         request: SubjectRequest
@@ -86,7 +85,6 @@ class SubjectService(
                 "El nombre no puede estar vacío"
             )
         }
-
 
         val subject = subjectRepository.findById(id)
             .orElseThrow {

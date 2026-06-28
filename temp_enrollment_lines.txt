@@ -1,0 +1,226 @@
+0001: package com.example.demo
+0002: 
+0003: import com.example.demo.dto.EnrollmentRequest
+0004: import com.example.demo.entities.Enrollment
+0005: import com.example.demo.entities.Professor
+0006: import com.example.demo.entities.Student
+0007: import com.example.demo.entities.Subject
+0008: import com.example.demo.exceptions.EnrollmentNotFoundException
+0009: import com.example.demo.exceptions.StudentNotFoundException
+0010: import com.example.demo.exceptions.SubjectNotFoundException
+0011: import com.example.demo.repositories.EnrollmentRepository
+0012: import com.example.demo.repositories.StudentRepository
+0013: import com.example.demo.repositories.SubjectRepository
+0014: import com.example.demo.services.EnrollmentService
+0015: import kotlin.test.assertEquals
+0016: import org.junit.jupiter.api.Assertions.assertThrows
+0017: import org.junit.jupiter.api.Test
+0018: import org.junit.jupiter.api.extension.ExtendWith
+0019: import org.mockito.ArgumentMatchers.any
+0020: import org.mockito.Mock
+0021: import org.mockito.Mockito.`when`
+0022: import org.mockito.Mockito.verify
+0023: import org.mockito.junit.jupiter.MockitoExtension
+0024: import java.util.Optional
+0025: 
+0026: @ExtendWith(MockitoExtension::class)
+0027: class EnrollmentServiceTest {
+0028: 
+0029:     @Mock
+0030:     lateinit var enrollmentRepository: EnrollmentRepository
+0031: 
+0032:     @Mock
+0033:     lateinit var studentRepository: StudentRepository
+0034: 
+0035:     @Mock
+0036:     lateinit var subjectRepository: SubjectRepository
+0037: 
+0038:     @Test
+0039:     fun `createEnrollment should create enrollment successfully`() {
+0040:         val student = Student(id = 1L, name = "Jeremy", email = "jeremy@puce.com")
+0041:         val professor = Professor(id = 1L, name = "Carlos", email = "carlos@puce.com")
+0042:         val subject = Subject(id = 1L, name = "Arquitectura", code = "", professor = professor)
+0043:         val enrollment = Enrollment(id = 1L, student = student, subject = subject, status = "INSCRITO")
+0044: 
+0045:         val request = EnrollmentRequest(studentId = 1L, subjectId = 1L)
+0046:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0047: 
+0048:         `when`(studentRepository.findById(1L)).thenReturn(Optional.of(student))
+0049:         `when`(subjectRepository.findById(1L)).thenReturn(Optional.of(subject))
+0050:         `when`(enrollmentRepository.save(any(Enrollment::class.java))).thenReturn(enrollment)
+0051: 
+0052:         val response = service.createEnrollment(request)
+0053: 
+0054:         assertEquals(1L, response.id)
+0055:         assertEquals("Jeremy", response.student.name)
+0056:         assertEquals("Arquitectura", response.subject.name)
+0057:         assertEquals("INSCRITO", response.status)
+0058:     }
+0059: 
+0060:     @Test
+0061:     fun `createEnrollment should throw exception when student id is null`() {
+0062:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0063:         val request = EnrollmentRequest(studentId = null, subjectId = 1L)
+0064: 
+0065:         val exception = assertThrows(IllegalArgumentException::class.java) {
+0066:             service.createEnrollment(request)
+0067:         }
+0068: 
+0069:         assertEquals("El id del estudiante es obligatorio", exception.message)
+0070:     }
+0071: 
+0072:     @Test
+0073:     fun `createEnrollment should throw exception when subject id is null`() {
+0074:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0075:         val request = EnrollmentRequest(studentId = 1L, subjectId = null)
+0076: 
+0077:         val exception = assertThrows(IllegalArgumentException::class.java) {
+0078:             service.createEnrollment(request)
+0079:         }
+0080: 
+0081:         assertEquals("El id de la materia es obligatorio", exception.message)
+0082:     }
+0083: 
+0084:     @Test
+0085:     fun `createEnrollment should throw StudentNotFoundException`() {
+0086:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0087:         val request = EnrollmentRequest(studentId = 1L, subjectId = 1L)
+0088: 
+0089:         `when`(studentRepository.findById(1L)).thenReturn(Optional.empty())
+0090: 
+0091:         val exception = assertThrows(StudentNotFoundException::class.java) {
+0092:             service.createEnrollment(request)
+0093:         }
+0094: 
+0095:         assertEquals("Estudiante no encontrado con id: 1", exception.message)
+0096:     }
+0097: 
+0098:     @Test
+0099:     fun `createEnrollment should throw SubjectNotFoundException`() {
+0100:         val student = Student(id = 1L, name = "Jeremy", email = "jeremy@puce.com")
+0101:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0102:         val request = EnrollmentRequest(studentId = 1L, subjectId = 1L)
+0103: 
+0104:         `when`(studentRepository.findById(1L)).thenReturn(Optional.of(student))
+0105:         `when`(subjectRepository.findById(1L)).thenReturn(Optional.empty())
+0106: 
+0107:         val exception = assertThrows(SubjectNotFoundException::class.java) {
+0108:             service.createEnrollment(request)
+0109:         }
+0110: 
+0111:         assertEquals("Materia no encontrada con id: 1", exception.message)
+0112:     }
+0113: 
+0114:     @Test
+0115:     fun `getAllEnrollments should return all enrollments`() {
+0116:         val professor = Professor(id = 1L, name = "Carlos", email = "carlos@puce.com")
+0117:         val student = Student(id = 1L, name = "Jeremy", email = "jeremy@puce.com")
+0118:         val subject = Subject(id = 1L, name = "Arquitectura", code = "", professor = professor)
+0119:         val enrollments = listOf(Enrollment(id = 1L, student = student, subject = subject, status = "INSCRITO"))
+0120: 
+0121:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0122:         `when`(enrollmentRepository.findAll()).thenReturn(enrollments)
+0123: 
+0124:         val response = service.getAllEnrollments()
+0125: 
+0126:         assertEquals(1, response.size)
+0127:         assertEquals("Jeremy", response[0].student.name)
+0128:         assertEquals("Arquitectura", response[0].subject.name)
+0129:     }
+0130: 
+0131:     @Test
+0132:     fun `getEnrollmentById should return enrollment when id exists`() {
+0133:         val professor = Professor(id = 1L, name = "Carlos", email = "carlos@puce.com")
+0134:         val student = Student(id = 1L, name = "Jeremy", email = "jeremy@puce.com")
+0135:         val subject = Subject(id = 1L, name = "Arquitectura", code = "", professor = professor)
+0136:         val enrollment = Enrollment(id = 1L, student = student, subject = subject, status = "INSCRITO")
+0137: 
+0138:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0139:         `when`(enrollmentRepository.findById(1L)).thenReturn(Optional.of(enrollment))
+0140: 
+0141:         val response = service.getEnrollmentById(1L)
+0142: 
+0143:         assertEquals(1L, response.id)
+0144:         assertEquals("Jeremy", response.student.name)
+0145:         assertEquals("Arquitectura", response.subject.name)
+0146:     }
+0147: 
+0148:     @Test
+0149:     fun `getEnrollmentById should throw EnrollmentNotFoundException when id does not exist`() {
+0150:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0151:         `when`(enrollmentRepository.findById(1L)).thenReturn(Optional.empty())
+0152: 
+0153:         val exception = assertThrows(EnrollmentNotFoundException::class.java) {
+0154:             service.getEnrollmentById(1L)
+0155:         }
+0156: 
+0157:         assertEquals("Enrollment no encontrado con id: 1", exception.message)
+0158:     }
+0159: 
+0160:     @Test
+0161:     fun `updateEnrollment should change subject`() {
+0162:         val professor = Professor(id = 1L, name = "Carlos", email = "carlos@puce.com")
+0163:         val student = Student(id = 1L, name = "Jeremy", email = "jeremy@puce.com")
+0164:         val oldSubject = Subject(id = 1L, name = "Arquitectura", code = "", professor = professor)
+0165:         val newSubject = Subject(id = 2L, name = "Programacion", code = "", professor = professor)
+0166:         val enrollment = Enrollment(id = 1L, student = student, subject = oldSubject, status = "INSCRITO")
+0167:         val request = EnrollmentRequest(studentId = null, subjectId = 2L, status = null)
+0168:         val updatedEnrollment = Enrollment(id = 1L, student = student, subject = newSubject, status = "INSCRITO")
+0169: 
+0170:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0171:         `when`(enrollmentRepository.findById(1L)).thenReturn(Optional.of(enrollment))
+0172:         `when`(subjectRepository.findById(2L)).thenReturn(Optional.of(newSubject))
+0173:         `when`(enrollmentRepository.save(any(Enrollment::class.java))).thenReturn(updatedEnrollment)
+0174: 
+0175:         val response = service.updateEnrollment(1L, request)
+0176: 
+0177:         assertEquals("Programacion", response.subject.name)
+0178:         assertEquals("Jeremy", response.student.name)
+0179:     }
+0180: 
+0181:     @Test
+0182:     fun `updateEnrollment should throw SubjectNotFoundException when subject does not exist`() {
+0183:         val professor = Professor(id = 1L, name = "Carlos", email = "carlos@puce.com")
+0184:         val student = Student(id = 1L, name = "Jeremy", email = "jeremy@puce.com")
+0185:         val oldSubject = Subject(id = 1L, name = "Arquitectura", code = "", professor = professor)
+0186:         val enrollment = Enrollment(id = 1L, student = student, subject = oldSubject, status = "INSCRITO")
+0187:         val request = EnrollmentRequest(studentId = null, subjectId = 2L, status = null)
+0188: 
+0189:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0190:         `when`(enrollmentRepository.findById(1L)).thenReturn(Optional.of(enrollment))
+0191:         `when`(subjectRepository.findById(2L)).thenReturn(Optional.empty())
+0192: 
+0193:         val exception = assertThrows(SubjectNotFoundException::class.java) {
+0194:             service.updateEnrollment(1L, request)
+0195:         }
+0196: 
+0197:         assertEquals("Materia no encontrada con id: 2", exception.message)
+0198:     }
+0199: 
+0200:     @Test
+0201:     fun `deleteEnrollment should delete enrollment when id exists`() {
+0202:         val professor = Professor(id = 1L, name = "Carlos", email = "carlos@puce.com")
+0203:         val student = Student(id = 1L, name = "Jeremy", email = "jeremy@puce.com")
+0204:         val subject = Subject(id = 1L, name = "Arquitectura", code = "", professor = professor)
+0205:         val enrollment = Enrollment(id = 1L, student = student, subject = subject, status = "INSCRITO")
+0206: 
+0207:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0208:         `when`(enrollmentRepository.findById(1L)).thenReturn(Optional.of(enrollment))
+0209: 
+0210:         service.deleteEnrollment(1L)
+0211: 
+0212:         verify(enrollmentRepository).delete(enrollment)
+0213:     }
+0214: 
+0215:     @Test
+0216:     fun `deleteEnrollment should throw EnrollmentNotFoundException when id does not exist`() {
+0217:         val service = EnrollmentService(enrollmentRepository, studentRepository, subjectRepository)
+0218:         `when`(enrollmentRepository.findById(1L)).thenReturn(Optional.empty())
+0219: 
+0220:         val exception = assertThrows(EnrollmentNotFoundException::class.java) {
+0221:             service.deleteEnrollment(1L)
+0222:         }
+0223: 
+0224:         assertEquals("Enrollment no encontrado con id: 1", exception.message)
+0225:     }
+0226: }

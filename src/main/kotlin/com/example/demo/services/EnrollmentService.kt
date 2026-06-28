@@ -79,18 +79,20 @@ class EnrollmentService(
         // 2. Determinar nuevo estado (si viene nulo en el JSON, conserva el actual)
         val nuevoEstado = request.status ?: enrollment.status
 
-        // 3. Determinar estudiante (si viene nulo o 0, conserva el actual; si viene un ID nuevo, lo busca)
-        val estudianteActualizado = if (request.studentId != null && request.studentId != 0L) {
-            studentRepository.findById(request.studentId)
-                .orElseThrow { StudentNotFoundException("Estudiante no encontrado con id: ${request.studentId}") }
+        // 3. Determinar estudiante de forma limpia para evitar ramas de bytecode extra por tipos mutables/anulables
+        val inputStudentId = request.studentId
+        val estudianteActualizado = if (inputStudentId != null && inputStudentId != 0L) {
+            studentRepository.findById(inputStudentId)
+                .orElseThrow { StudentNotFoundException("Estudiante no encontrado con id: $inputStudentId") }
         } else {
             enrollment.student
         }
 
-        // 4. Determinar materia (si viene nulo o 0, conserva la actual; si viene un ID nuevo, la busca)
-        val materiaActualizada = if (request.subjectId != null && request.subjectId != 0L) {
-            subjectRepository.findById(request.subjectId)
-                .orElseThrow { SubjectNotFoundException("Materia no encontrada con id: ${request.subjectId}") }
+        // 4. Determinar materia de forma limpia para evitar ramas de bytecode extra por tipos mutables/anulables
+        val inputSubjectId = request.subjectId
+        val materiaActualizada = if (inputSubjectId != null && inputSubjectId != 0L) {
+            subjectRepository.findById(inputSubjectId)
+                .orElseThrow { SubjectNotFoundException("Materia no encontrada con id: $inputSubjectId") }
         } else {
             enrollment.subject
         }

@@ -72,7 +72,6 @@ class StudentService(
 
         logger.info("Actualizando estudiante con id: $id")
 
-
         val student = repository.findById(id)
             .orElseThrow {
                 StudentNotFoundException(
@@ -80,14 +79,12 @@ class StudentService(
                 )
             }
 
-
         val updatedStudent = Student(
             id = student.id,
             name = request.name,
             email = request.email,
             enrollments = student.enrollments
         )
-
 
         val savedStudent = repository.save(updatedStudent)
 
